@@ -48,6 +48,27 @@ rm -rf ~/.config/alacritty
 cp -r alacritty ~/.config/alacritty
 ```
 
+## Theme Resources
+
+### Alacritty Themes
+
+- 官方主题库: https://github.com/alacritty/alacritty-theme
+- 社区主题: https://github.com/eendroroy/alacritty-theme
+
+使用方法:
+```bash
+# 克隆主题库
+git clone https://github.com/alacritty/alacritty-theme.git ~/.config/alacritty/themes
+
+# 在 alacritty.toml 中引用主题
+# import = ["~/.config/alacritty/themes/themes/gruvbox_light.toml"]
+```
+
+### Gruvbox (当前使用)
+
+- 官方: https://github.com/morhetz/gruvbox
+- 配色已内置在 `alacritty/alacritty.toml` 中
+
 ## Backup Date
 
 2026-02-18
