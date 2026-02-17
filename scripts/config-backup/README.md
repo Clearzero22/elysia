@@ -9,6 +9,7 @@
 | `.tmux.conf` | `~/.tmux.conf` | Tmux 配置 |
 | `config.yml` | `~/.config/lazygit/config.yml` | Lazygit 配置 |
 | `nvim/` | `~/.config/nvim/` | LazyVim (Neovim) 配置 |
+| `alacritty/` | `~/.config/alacritty/` | Alacritty 终端配置 |
 
 ## Nvim Config Structure
 
@@ -41,6 +42,10 @@ cp config.yml ~/.config/lazygit/config.yml
 # Restore nvim config (LazyVim)
 rm -rf ~/.config/nvim
 cp -r nvim ~/.config/nvim
+
+# Restore alacritty config
+rm -rf ~/.config/alacritty
+cp -r alacritty ~/.config/alacritty
 ```
 
 ## Backup Date
