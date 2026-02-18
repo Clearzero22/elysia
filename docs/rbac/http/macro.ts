@@ -4,9 +4,18 @@ import { Elysia } from 'elysia'
 import { authMiddleware } from '../middleware/auth'
 import {
   getAuthorizationChecker,
-  type AuthorizationConfig,
-  type AuthorizationResult
+  type AuthorizationConfig
 } from '../../services/rbac/authorization-checker'
+import type { PermissionAction, RbacErrorCode } from '../../services/rbac/types'
+
+/**
+ * 错误响应接口
+ */
+interface MacroErrorResponse {
+  code: number
+  message: string
+  error: typeof RbacErrorCode[keyof typeof RbacErrorCode]
+}
 
 /**
  * RBAC 宏 - 提供声明式权限控制
@@ -35,25 +44,25 @@ export const rbacMacros = new Elysia({ name: 'rbac:macros' })
     requireAuth(enabled: boolean) {
       if (!enabled) return
 
-      onBeforeHandle(async ({ user, error }) => {
+      onBeforeHandle(async ({ user, error }): Promise<MacroErrorResponse | void> => {
         if (!user) {
           return error(401, {
             code: 401,
             message: '未登录',
-            error: 'UNAUTHORIZED'
+            error: 'UNAUTHORIZED' as const
           })
         }
       })
     },
 
     /**
-     * 单个权限检查
+     * 单个权限检查（类型安全）
      * @example { permission: ['project', 'create'] }
      */
-    permission([resource, action]: [string, string]) {
-      onBeforeHandle(async ({ user, params, error }) => {
+    permission<R extends string>([resource, action]: [R, PermissionAction]) {
+      onBeforeHandle(async ({ user, params, error }): Promise<MacroErrorResponse | void> => {
         const result = await executeAuthCheck(
-          { permissions: [{ resource, action: action as any }] },
+          { permissions: [{ resource, action }] },
           user,
           params as Record<string, string>
         )
@@ -65,17 +74,16 @@ export const rbacMacros = new Elysia({ name: 'rbac:macros' })
     },
 
     /**
-     * 多个权限检查（AND 关系）
+     * 多个权限检查（AND 关系，类型安全）
      * @example { allPermissions: [['project', 'read'], ['task', 'read']] }
      */
-    allPermissions(checks: [string, string][]) {
-      onBeforeHandle(async ({ user, params, error }) => {
+    allPermissions<const Checks extends readonly [string, PermissionAction][]>(
+      checks: Checks
+    ) {
+      onBeforeHandle(async ({ user, params, error }): Promise<MacroErrorResponse | void> => {
         const result = await executeAuthCheck(
           {
-            permissions: checks.map(([r, a]) => ({
-              resource: r,
-              action: a as any
-            })),
+            permissions: checks.map(([r, a]) => ({ resource: r, action: a })),
             permissionMode: 'all'
           },
           user,
@@ -89,17 +97,16 @@ export const rbacMacros = new Elysia({ name: 'rbac:macros' })
     },
 
     /**
-     * 任一权限检查（OR 关系）
+     * 任一权限检查（OR 关系，类型安全）
      * @example { anyPermission: [['project', 'delete'], ['project', 'manage']] }
      */
-    anyPermission(checks: [string, string][]) {
-      onBeforeHandle(async ({ user, params, error }) => {
+    anyPermission<const Checks extends readonly [string, PermissionAction][]>(
+      checks: Checks
+    ) {
+      onBeforeHandle(async ({ user, params, error }): Promise<MacroErrorResponse | void> => {
         const result = await executeAuthCheck(
           {
-            permissions: checks.map(([r, a]) => ({
-              resource: r,
-              action: a as any
-            })),
+            permissions: checks.map(([r, a]) => ({ resource: r, action: a })),
             permissionMode: 'any'
           },
           user,
@@ -113,13 +120,13 @@ export const rbacMacros = new Elysia({ name: 'rbac:macros' })
     },
 
     /**
-     * 角色检查（OR 关系）
+     * 角色检查（OR 关系，类型安全）
      * @example { role: ['admin', 'manager'] }
      */
-    role(roles: string[]) {
-      onBeforeHandle(async ({ user, params, error }) => {
+    role<const Roles extends readonly string[]>(roles: Roles) {
+      onBeforeHandle(async ({ user, params, error }): Promise<MacroErrorResponse | void> => {
         const result = await executeAuthCheck(
-          { roles },
+          { roles: [...roles] },
           user,
           params as Record<string, string>
         )
@@ -134,8 +141,8 @@ export const rbacMacros = new Elysia({ name: 'rbac:macros' })
      * 所有权检查
      * @example { ownership: { resource: 'project', param: 'id' } }
      */
-    ownership(config: { resource: string; param?: string }) {
-      onBeforeHandle(async ({ user, params, error }) => {
+    ownership<R extends string>(config: { resource: R; param?: string }) {
+      onBeforeHandle(async ({ user, params, error }): Promise<MacroErrorResponse | void> => {
         const result = await executeAuthCheck(
           { ownership: { resource: config.resource, paramName: config.param } },
           user,
@@ -149,20 +156,20 @@ export const rbacMacros = new Elysia({ name: 'rbac:macros' })
     },
 
     /**
-     * 权限或所有权（任一满足即可）
+     * 权限或所有权（任一满足即可，类型安全）
      * @example { permissionOrOwnership: { permission: ['project', 'update'], resource: 'project' } }
      */
-    permissionOrOwnership(config: {
-      permission: [string, string]
-      resource: string
+    permissionOrOwnership<R extends string>(config: {
+      permission: [R, PermissionAction]
+      resource: R
       param?: string
     }) {
-      onBeforeHandle(async ({ user, params, error }) => {
+      onBeforeHandle(async ({ user, params, error }): Promise<MacroErrorResponse | void> => {
         const [resource, action] = config.permission
 
         const result = await executeAuthCheck(
           {
-            permissions: [{ resource, action: action as any }],
+            permissions: [{ resource, action }],
             ownership: { resource: config.resource, paramName: config.param },
             allowOwnershipFallback: true
           },
@@ -179,13 +186,12 @@ export const rbacMacros = new Elysia({ name: 'rbac:macros' })
 
 /**
  * 执行授权检查的辅助函数
- * 统一处理登录检查和授权检查逻辑
  */
 async function executeAuthCheck(
   config: AuthorizationConfig,
   user: { id: string } | null,
   params: Record<string, string>
-): Promise<{ code: number; body: any } | null> {
+): Promise<{ code: number; body: MacroErrorResponse } | null> {
   // 1. 登录检查
   if (!user) {
     return {
@@ -219,28 +225,3 @@ async function executeAuthCheck(
 
   return null
 }
-
-/**
- * 简化的宏导出（可选使用）
- */
-export const authMacros = new Elysia({ name: 'auth:macros' })
-  .use(authMiddleware)
-  .macro(({ onBeforeHandle }) => ({
-    /**
-     * 登录 + 权限组合
-     * @example { authAndPermission: { resource: 'project', action: 'create' } }
-     */
-    authAndPermission(config: { resource: string; action: string }) {
-      onBeforeHandle(async ({ user, params, error }) => {
-        const result = await executeAuthCheck(
-          { permissions: [{ resource: config.resource, action: config.action as any }] },
-          user,
-          params as Record<string, string>
-        )
-
-        if (result) {
-          return error(result.code, result.body)
-        }
-      })
-    }
-  }))

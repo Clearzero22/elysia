@@ -291,55 +291,57 @@ export function getAuthorizationChecker(): AuthorizationChecker {
 // ========== 类型安全的配置构建器 ==========
 
 /**
- * 创建权限检查配置
+ * 创建权限检查配置（类型安全）
  */
-export function requirePermission(
-  resource: string,
+export function requirePermission<R extends string>(
+  resource: R,
   action: PermissionAction
 ): AuthorizationConfig {
   return { permissions: [{ resource, action }] }
 }
 
 /**
- * 创建多权限检查配置（AND）
+ * 创建多权限检查配置（AND，类型安全）
  */
-export function requireAllPermissions(
-  ...checks: PermissionCheck[]
-): AuthorizationConfig {
-  return { permissions: checks, permissionMode: 'all' }
+export function requireAllPermissions<
+  const Checks extends readonly PermissionCheck[]
+>(...checks: Checks): AuthorizationConfig {
+  return { permissions: [...checks], permissionMode: 'all' }
 }
 
 /**
- * 创建多权限检查配置（OR）
+ * 创建多权限检查配置（OR，类型安全）
  */
-export function requireAnyPermission(
-  ...checks: PermissionCheck[]
-): AuthorizationConfig {
-  return { permissions: checks, permissionMode: 'any' }
+export function requireAnyPermission<
+  const Checks extends readonly PermissionCheck[]
+>(...checks: Checks): AuthorizationConfig {
+  return { permissions: [...checks], permissionMode: 'any' }
 }
 
 /**
- * 创建角色检查配置
+ * 创建角色检查配置（类型安全）
  */
-export function requireRole(...roles: string[]): AuthorizationConfig {
-  return { roles }
+export function requireRole<const Roles extends readonly string[]>(
+  ...roles: Roles
+): AuthorizationConfig {
+  return { roles: [...roles] }
 }
 
 /**
  * 创建所有权检查配置
  */
-export function requireOwnership(
-  resource: string,
+export function requireOwnership<R extends string>(
+  resource: R,
   paramName?: string
 ): AuthorizationConfig {
   return { ownership: { resource, paramName } }
 }
 
 /**
- * 创建权限或所有权检查配置
+ * 创建权限或所有权检查配置（类型安全）
  */
-export function requirePermissionOrOwnership(
-  resource: string,
+export function requirePermissionOrOwnership<R extends string>(
+  resource: R,
   action: PermissionAction,
   paramName?: string
 ): AuthorizationConfig {

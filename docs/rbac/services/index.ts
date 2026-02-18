@@ -17,11 +17,19 @@ import {
   initializeScopeResolver,
   ScopeResolver
 } from './scope-resolver'
+import {
+  initializeCacheInvalidator,
+  CacheInvalidator
+} from './cache-invalidator'
+import { getRbacAdminService, RbacAdminService } from './rbac-admin'
 
 export * from './types'
 export * from './cache'
 export * from './scope-helpers'
+export * from './model-helpers'
 export * from './authorization-checker'
+export * from './cache-invalidator'
+export * from './rbac-admin'
 export { PermissionService } from './permission-service'
 export { OwnershipService } from './ownership-service'
 export { ScopeResolver } from './scope-resolver'
@@ -42,13 +50,16 @@ export interface RbacInitOptions {
  * ```typescript
  * // src/index.ts
  * import { initializeRbacServices } from './services/rbac'
+ * import { rbacCacheMiddleware } from './services/rbac/prisma-middleware'
  *
  * async function bootstrap() {
  *   // 初始化 RBAC 服务
- *   await initializeRbacServices({
- *     redis: redisClient, // 可选，不传则使用内存缓存
- *     cacheTtl: 300
+ *   const { prisma } = await initializeRbacServices({
+ *     redis: redisClient, // 可选
  *   })
+ *
+ *   // 应用 Prisma 中间件
+ *   prisma.$use(rbacCacheMiddleware)
  *
  *   // 启动 Elysia 应用
  *   const app = new Elysia()
@@ -62,19 +73,27 @@ export async function initializeRbacServices(
   permissionService: PermissionService
   ownershipService: OwnershipService
   scopeResolver: ScopeResolver
+  cacheInvalidator: CacheInvalidator
+  adminService: RbacAdminService
   cache: PermissionCache
 }> {
   // 1. 创建缓存
   const cache = createPermissionCache(options.redis as any)
 
-  // 2. 初始化权限服务
+  // 2. 初始化缓存失效器
+  const cacheInvalidator = initializeCacheInvalidator(cache)
+
+  // 3. 初始化权限服务
   const permissionService = await initializePermissionService(cache)
 
-  // 3. 初始化所有权服务
+  // 4. 初始化所有权服务
   await initializeOwnershipService()
 
-  // 4. 初始化 Scope 解析器
+  // 5. 初始化 Scope 解析器
   await initializeScopeResolver()
+
+  // 6. 初始化管理服务
+  const adminService = getRbacAdminService()
 
   console.log('✅ RBAC services initialized')
 
@@ -82,6 +101,8 @@ export async function initializeRbacServices(
     permissionService,
     ownershipService: getOwnershipService(),
     scopeResolver: getScopeResolver(),
+    cacheInvalidator,
+    adminService,
     cache
   }
 }
@@ -94,7 +115,8 @@ export function getRbacServices() {
   return {
     permissionService: getPermissionService(),
     ownershipService: getOwnershipService(),
-    scopeResolver: getScopeResolver()
+    scopeResolver: getScopeResolver(),
+    adminService: getRbacAdminService()
   }
 }
 
