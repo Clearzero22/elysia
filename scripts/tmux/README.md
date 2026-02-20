@@ -13,6 +13,8 @@ scripts/tmux/
 ├── tmux-project-gemini.sh   # Gemini 版本
 ├── tmux-dev.sh              # Elysia 专用（5 窗口）
 ├── memory-leak-test.sh      # 内存泄漏测试环境
+├── install.sh               # 一键安装脚本 ⭐
+├── Makefile                 # 管理命令 ⭐
 └── README.md                # 本文档
 
 scripts/
@@ -22,7 +24,29 @@ scripts/
 
 ## 快速开始
 
-### 1. 启动开发环境
+### 方式一：一键安装（推荐）⭐
+
+```bash
+# 进入目录
+cd /path/to/elysia/scripts/tmux
+
+# 安装（自动配置 PATH）
+make install
+
+# 现在可以在任意位置使用
+tk .                    # 当前目录
+tk ~/my-project         # 指定目录
+tk --help               # 查看帮助
+```
+
+### 方式二：远程一键安装
+
+```bash
+# 替换为你的仓库地址
+curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/scripts/tmux/install.sh | bash
+```
+
+### 方式三：手动启动
 
 ```bash
 # Claude Code 版本
@@ -39,9 +63,15 @@ scripts/
 
 # Gemini 版本
 ./scripts/tmux/tmux-project-gemini.sh /path/to/project
+```
 
-# 当前目录
-./scripts/tmux/tmux-project.sh .
+### 管理命令
+
+```bash
+make install    # 安装
+make uninstall  # 卸载
+make update     # 更新
+make test       # 测试脚本
 ```
 
 ### 2. 会话选择器
